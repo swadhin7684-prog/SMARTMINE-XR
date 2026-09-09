@@ -1,0 +1,13 @@
+{
+  "name": "smartmine-xr",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SmartMine XR - Immersive VR Safety Training Platform",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "install:frontend": "npm --prefix frontend install",
+    "install:backend": "npm --prefix backend install"
+  }
+}
