@@ -1,0 +1,251 @@
+@import "tailwindcss";
+
+/* ============================================ */
+/* SmartMine XR — Design System                  */
+/* ============================================ */
+
+@theme {
+  --color-mine-950: #050506;
+  --color-mine-900: #0a0a0c;
+  --color-mine-800: #111114;
+  --color-mine-700: #1a1a1f;
+  --color-mine-600: #252529;
+  --color-mine-500: #3a3a40;
+  --color-mine-400: #55555e;
+  --color-mine-300: #8a8a96;
+  --color-mine-200: #b5b5c0;
+  --color-mine-100: #dddde4;
+
+  --color-safety: #f0c800;
+  --color-safety-light: #f5d742;
+  --color-safety-dark: #c4a300;
+  --color-safety-glow: rgba(240, 200, 0, 0.25);
+  --color-safety-subtle: rgba(240, 200, 0, 0.08);
+
+  --color-success: #22c55e;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+  --color-warning: #f59e0b;
+
+  --font-heading: 'Outfit', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-card-hover: 0 8px 25px rgba(0,0,0,0.5), 0 0 0 1px rgba(240,200,0,0.15);
+  --shadow-glow: 0 0 20px rgba(240, 200, 0, 0.2), 0 0 40px rgba(240, 200, 0, 0.1);
+  --shadow-button: 0 2px 0 rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.2);
+  --shadow-button-pressed: 0 0px 0 rgba(0,0,0,0.3), 0 1px 4px rgba(0,0,0,0.2);
+}
+
+/* ---- Base ---- */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--color-mine-950);
+    color: #ffffff;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background-color: var(--color-safety);
+    color: var(--color-mine-950);
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-mine-900);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-mine-600);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-mine-500);
+  }
+}
+
+/* ---- Component Utilities ---- */
+@layer components {
+  .section-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .section-padding {
+    @apply py-16 md:py-24;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight;
+  }
+
+  .section-subtitle {
+    @apply text-lg md:text-xl text-mine-300 max-w-2xl;
+  }
+
+  .card-base {
+    @apply bg-mine-800 border border-mine-600/50 rounded-2xl transition-all duration-300;
+    box-shadow: var(--shadow-card);
+  }
+
+  .card-base:hover {
+    box-shadow: var(--shadow-card-hover);
+    border-color: rgba(240, 200, 0, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .card-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .badge,
+  .badge-coming-soon,
+  .badge-difficulty-beginner,
+  .badge-difficulty-intermediate,
+  .badge-difficulty-advanced {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider;
+  }
+
+  .badge-coming-soon {
+    @apply bg-safety/15 text-safety border border-safety/30;
+  }
+
+  .badge-difficulty-beginner {
+    @apply bg-success/15 text-success border border-success/30;
+  }
+
+  .badge-difficulty-intermediate {
+    @apply bg-warning/15 text-warning border border-warning/30;
+  }
+
+  .badge-difficulty-advanced {
+    @apply bg-danger/15 text-danger border border-danger/30;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 bg-mine-800 border border-mine-600 rounded-xl text-white placeholder-mine-400 
+           focus:outline-none focus:border-safety focus:ring-1 focus:ring-safety/50 transition-all duration-200;
+  }
+
+  .glass-surface {
+    @apply bg-mine-800/80 backdrop-blur-md border border-mine-600/30;
+  }
+}
+
+/* ---- Animations ---- */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(240, 200, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(240, 200, 0, 0.4), 0 0 50px rgba(240, 200, 0, 0.15);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes check-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(240, 200, 0, 0.06) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+}
+
+.animate-check-in {
+  animation: check-in 0.4s ease-out forwards;
+}
+
+/* ---- Hero Overlay ---- */
+.hero-overlay {
+  background: linear-gradient(
+    to bottom,
+    rgba(5, 5, 6, 0.6) 0%,
+    rgba(5, 5, 6, 0.75) 40%,
+    rgba(5, 5, 6, 0.95) 85%,
+    rgba(5, 5, 6, 1) 100%
+  );
+}
+
+/* ---- Button 3D ---- */
+.btn-3d {
+  position: relative;
+  box-shadow: var(--shadow-button);
+  transform: translateY(0);
+  transition: all 0.15s ease;
+}
+
+.btn-3d:active {
+  box-shadow: var(--shadow-button-pressed);
+  transform: translateY(2px);
+}
+
+/* ---- Progress Ring ---- */
+.progress-ring-circle {
+  transition: stroke-dashoffset 1s ease-in-out;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
