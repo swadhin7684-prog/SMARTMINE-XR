@@ -282,6 +282,7 @@ export const videoContent: VideoContent[] = [
     duration: '8:24',
     category: 'Training Videos',
     scenarioId: 'gas-leak',
+    videoUrl: '/videos/Video_01 (1).mp4',
   },
   {
     id: 'vid-cave-in',
@@ -291,6 +292,7 @@ export const videoContent: VideoContent[] = [
     duration: '10:15',
     category: 'Training Videos',
     scenarioId: 'mine-cave-in',
+    videoUrl: '/videos/Video_01 (2).mp4',
   },
   {
     id: 'vid-equipment',
@@ -300,6 +302,7 @@ export const videoContent: VideoContent[] = [
     duration: '7:42',
     category: 'Training Videos',
     scenarioId: 'equipment-accident',
+    videoUrl: '/videos/Video_01 (3).mp4',
   },
   {
     id: 'vid-visibility',

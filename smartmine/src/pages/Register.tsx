@@ -42,8 +42,8 @@ export default function Register() {
       } else {
         setError('Failed to create account. Please try again.');
       }
-    } catch {
-      setError('An error occurred during registration.');
+    } catch (err: any) {
+      setError(err?.message || 'An error occurred during registration.');
     }
   };
 

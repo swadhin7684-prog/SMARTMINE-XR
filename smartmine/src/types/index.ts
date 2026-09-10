@@ -96,6 +96,7 @@ export interface VideoContent {
   category: string;
   scenarioId?: string;
   thumbnailUrl?: string;
+  videoUrl?: string;
 }
 
 export interface VRChecklistItem {

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { getAdminAuth, getFirestoreDb } from '../config/firebase.js';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -9,22 +10,52 @@ export interface AuthRequest extends Request {
   };
 }
 
-export function authenticateToken(req: AuthRequest, res: Response, next: NextFunction): void {
+export async function authenticateToken(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    res.status(401).json({ success: false, message: 'Access denied. No authentication token provided.' });
+    res.status(401).json({ success: false, message: 'Access token is required.' });
     return;
   }
 
-  const secret = process.env.JWT_SECRET || 'smartmine_xr_jwt_secret_key_2026_super_secure';
-
+  // 1. First attempt: Verify as Firebase ID Token
   try {
-    const decoded = jwt.verify(token, secret) as { id: string; email: string; role: string };
-    req.user = decoded;
+    const adminAuth = getAdminAuth();
+    const decoded = await adminAuth.verifyIdToken(token);
+    
+    // Look up role from Firestore user doc if present
+    let role = (decoded.role as string) || 'worker';
+    try {
+      const userDoc = await getFirestoreDb().collection('users').doc(decoded.uid).get();
+      if (userDoc.exists) {
+        role = userDoc.data()?.role || role;
+      }
+    } catch {
+      // Use decoded token role fallback
+    }
+
+    req.user = {
+      id: decoded.uid,
+      email: decoded.email || '',
+      role,
+    };
     next();
-  } catch (err) {
-    res.status(403).json({ success: false, message: 'Invalid or expired authentication token.' });
+    return;
+  } catch (firebaseErr) {
+    // 2. Second attempt: Check if legacy JWT token
+    const secret = process.env.JWT_SECRET;
+    if (secret) {
+      try {
+        const decoded = jwt.verify(token, secret) as { id: string; email: string; role: string };
+        req.user = decoded;
+        next();
+        return;
+      } catch {
+        // Fall through to 401
+      }
+    }
+
+    res.status(401).json({ success: false, message: 'Invalid or expired authentication token.' });
   }
 }

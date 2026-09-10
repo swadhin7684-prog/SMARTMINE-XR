@@ -1,11 +1,14 @@
+
 # Dependencies
 node_modules/
 frontend/node_modules/
+smartmine/node_modules/
 backend/node_modules/
 
 # Production builds
 dist/
 frontend/dist/
+smartmine/dist/
 backend/dist/
 dist-ssr/
 
@@ -14,6 +17,11 @@ dist-ssr/
 .env.local
 .env.*.local
 backend/.env
+smartmine/.env
+smartmine/.env.local
+smartmine/.env.*.local
+serviceAccountKey.json
+*serviceAccount*.json
 
 # Logs
 logs/

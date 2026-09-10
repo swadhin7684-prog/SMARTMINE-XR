@@ -1,9 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { User } from '../models/User.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'smartmine_xr_jwt_secret_key_2026_super_secure';
+import { getAdminAuth, getFirestoreDb } from '../config/firebase.js';
 
 export async function register(req: Request, res: Response): Promise<void> {
   try {
@@ -14,51 +11,84 @@ export async function register(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const existing = await User.findOne({ email: email.toLowerCase() });
-    if (existing) {
-      res.status(409).json({ success: false, message: 'A worker profile with this email already exists.' });
-      return;
+    const adminAuth = getAdminAuth();
+    const db = getFirestoreDb();
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if user already exists in Firebase Auth or Firestore
+    try {
+      const existing = await adminAuth.getUserByEmail(normalizedEmail);
+      if (existing) {
+        res.status(409).json({ success: false, message: 'A worker profile with this email already exists in Firebase.' });
+        return;
+      }
+    } catch (err: any) {
+      // auth/user-not-found is expected if user doesn't exist
+      if (err.code !== 'auth/user-not-found') {
+        console.warn('Firebase check user error:', err.code);
+      }
     }
 
+    // Hash password for backend verification fallback
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    const newUser = await User.create({
+    // 1. Create user in Firebase Authentication
+    let firebaseUser;
+    try {
+      firebaseUser = await adminAuth.createUser({
+        email: normalizedEmail,
+        password,
+        displayName: name,
+      });
+    } catch (authErr: any) {
+      console.error('Firebase Auth createUser error:', authErr);
+      res.status(400).json({ success: false, message: authErr.message || 'Failed to create user in Firebase Auth.' });
+      return;
+    }
+
+    const uid = firebaseUser.uid;
+    const now = new Date();
+    const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    const userData = {
+      id: uid,
+      uid,
       name,
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       passwordHash,
       role: 'worker',
+      trainingProgress: 0,
+      completedSessions: 0,
+      averageScore: 0,
+      certificateCount: 0,
       subscription: {
         plan: 'free',
         status: 'active',
-        startDate: new Date(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        startDate: now.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
       },
-    });
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    };
 
-    const token = jwt.sign(
-      { id: newUser._id.toString(), email: newUser.email, role: newUser.role },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    // 2. Save user profile document to Cloud Firestore
+    await db.collection('users').doc(uid).set(userData);
+
+    // 3. Mint Firebase custom token
+    const token = await adminAuth.createCustomToken(uid, { role: 'worker' });
+
+    // Clean passwordHash before sending to client
+    const { passwordHash: _, ...safeUser } = userData;
 
     res.status(201).json({
       success: true,
       token,
-      user: {
-        id: newUser._id.toString(),
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        subscription: newUser.subscription,
-        trainingProgress: newUser.trainingProgress,
-        completedSessions: newUser.completedSessions,
-        averageScore: newUser.averageScore,
-        certificateCount: newUser.certificateCount,
-      },
+      user: safeUser,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error during registration.', error });
+    console.error('Registration error:', error);
+    res.status(500).json({ success: false, message: 'Server error during registration.' });
   }
 }
 
@@ -71,40 +101,47 @@ export async function login(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
+    const adminAuth = getAdminAuth();
+    const db = getFirestoreDb();
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Query user profile in Firestore
+    const usersSnap = await db.collection('users').where('email', '==', normalizedEmail).limit(1).get();
+
+    if (usersSnap.empty) {
       res.status(401).json({ success: false, message: 'Invalid email or password.' });
       return;
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
-      res.status(401).json({ success: false, message: 'Invalid email or password.' });
-      return;
+    const userDoc = usersSnap.docs[0];
+    const userData = userDoc.data();
+
+    // Verify password with bcrypt
+    if (userData.passwordHash) {
+      const isMatch = await bcrypt.compare(password, userData.passwordHash);
+      if (!isMatch) {
+        res.status(401).json({ success: false, message: 'Invalid email or password.' });
+        return;
+      }
     }
 
-    const token = jwt.sign(
-      { id: user._id.toString(), email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const uid = userData.uid || userDoc.id;
+
+    // Mint Firebase custom token
+    const token = await adminAuth.createCustomToken(uid, { role: userData.role || 'worker' });
+
+    const { passwordHash: _, ...safeUser } = userData;
 
     res.json({
       success: true,
       token,
       user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        subscription: user.subscription,
-        trainingProgress: user.trainingProgress,
-        completedSessions: user.completedSessions,
-        averageScore: user.averageScore,
-        certificateCount: user.certificateCount,
+        id: uid,
+        ...safeUser,
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error during login.', error });
+    console.error('Login error:', error);
+    res.status(500).json({ success: false, message: 'Server error during login.' });
   }
 }

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Scenario } from '../models/Scenario.js';
+import { getFirestoreDb } from '../config/firebase.js';
 
 // Default static fallback scenarios
 const fallbackScenarios = [
@@ -77,32 +77,72 @@ const fallbackScenarios = [
 
 export async function getScenarios(_req: Request, res: Response): Promise<void> {
   try {
-    const dbScenarios = await Scenario.find();
-    if (dbScenarios && dbScenarios.length > 0) {
-      res.json({ success: true, scenarios: dbScenarios });
-    } else {
-      res.json({ success: true, scenarios: fallbackScenarios });
+    const db = getFirestoreDb();
+    const snapshot = await db.collection('scenarios').get();
+    if (!snapshot.empty) {
+      const scenarios = snapshot.docs.map((doc: any) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          slug: data.slug || doc.id,
+          title: data.title,
+          description: data.description,
+          shortDescription: data.shortDescription,
+          difficulty: data.difficulty,
+          duration: data.duration,
+          status: data.status,
+          category: data.category,
+          icon: data.icon,
+          hazards: data.hazards || [],
+          learningObjectives: data.learningObjectives || [],
+          vrRequirements: data.vrRequirements || [],
+        };
+      });
+      res.json({ success: true, scenarios, source: 'firestore' });
+      return;
     }
-  } catch {
-    res.json({ success: true, scenarios: fallbackScenarios });
+  } catch (error) {
+    console.warn('Firestore scenarios fetch error, falling back to static:', error);
   }
+
+  res.json({ success: true, scenarios: fallbackScenarios, source: 'fallback' });
 }
 
 export async function getScenarioById(req: Request, res: Response): Promise<void> {
-  const { id } = req.params;
+  const id = req.params.id as string;
   try {
-    const found = await Scenario.findOne({ slug: id });
-    if (found) {
-      res.json({ success: true, scenario: found });
+    const db = getFirestoreDb();
+    const doc = await db.collection('scenarios').doc(id).get();
+    if (doc.exists) {
+      const data = doc.data()!;
+      res.json({
+        success: true,
+        scenario: {
+          id: doc.id,
+          slug: data.slug || doc.id,
+          title: data.title,
+          description: data.description,
+          shortDescription: data.shortDescription,
+          difficulty: data.difficulty,
+          duration: data.duration,
+          status: data.status,
+          category: data.category,
+          icon: data.icon,
+          hazards: data.hazards || [],
+          learningObjectives: data.learningObjectives || [],
+          vrRequirements: data.vrRequirements || [],
+        },
+        source: 'firestore',
+      });
       return;
     }
-  } catch {
-    // Fall back to static
+  } catch (error) {
+    console.warn('Firestore scenario getById error:', error);
   }
 
   const fallback = fallbackScenarios.find((s) => s.slug === id);
   if (fallback) {
-    res.json({ success: true, scenario: fallback });
+    res.json({ success: true, scenario: fallback, source: 'fallback' });
   } else {
     res.status(404).json({ success: false, message: 'Scenario not found' });
   }

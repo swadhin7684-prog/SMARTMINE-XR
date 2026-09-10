@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
-import { User } from '../models/User.js';
+import { getFirestoreDb } from '../config/firebase.js';
 
 export async function getProfile(req: AuthRequest, res: Response): Promise<void> {
   try {
@@ -9,15 +9,27 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const user = await User.findById(req.user.id).select('-passwordHash');
-    if (!user) {
+    const db = getFirestoreDb();
+    const doc = await db.collection('users').doc(req.user.id).get();
+
+    if (!doc.exists) {
       res.status(404).json({ success: false, message: 'User not found' });
       return;
     }
 
-    res.json({ success: true, user });
+    const data = doc.data()!;
+    const { passwordHash: _, ...safeUser } = data;
+
+    res.json({
+      success: true,
+      user: {
+        id: doc.id,
+        ...safeUser,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to retrieve profile', error });
+    console.error('Get profile error:', error);
+    res.status(500).json({ success: false, message: 'Failed to retrieve profile' });
   }
 }
 
@@ -29,14 +41,30 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
     }
 
     const { name, email, avatar } = req.body;
-    const updates: Record<string, string> = {};
+    const updates: Record<string, any> = {
+      updatedAt: new Date().toISOString(),
+    };
     if (name) updates.name = name;
     if (email) updates.email = email.toLowerCase();
     if (avatar) updates.avatar = avatar;
 
-    const updated = await User.findByIdAndUpdate(req.user.id, updates, { new: true }).select('-passwordHash');
-    res.json({ success: true, user: updated });
+    const db = getFirestoreDb();
+    const userRef = db.collection('users').doc(req.user.id);
+    await userRef.set(updates, { merge: true });
+
+    const updatedDoc = await userRef.get();
+    const data = updatedDoc.data() || {};
+    const { passwordHash: _, ...safeUser } = data;
+
+    res.json({
+      success: true,
+      user: {
+        id: updatedDoc.id,
+        ...safeUser,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to update profile', error });
+    console.error('Update profile error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update profile' });
   }
 }

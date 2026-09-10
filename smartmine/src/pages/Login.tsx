@@ -27,8 +27,8 @@ export default function Login() {
       } else {
         setError('Invalid credentials. Please verify your email and password.');
       }
-    } catch {
-      setError('An error occurred during authentication. Please retry.');
+    } catch (err: any) {
+      setError(err?.message || 'An error occurred during authentication. Please retry.');
     }
   };
 
